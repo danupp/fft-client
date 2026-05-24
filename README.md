@@ -1,4 +1,4 @@
-Build with:
-meson build
-cd build
-ninja
+Build with:\
+meson build\
+cd build\
+ninja\
