@@ -198,7 +198,8 @@ void plot_spectrum(double *spectrum, int size) {
 
     // Scaling factor to map dB to pixel height
     //double scale_range = max_magnitude + 150;  // To map to a visible range
-    double scaling_factor = 600.0 / 150; // Scale height to window's height  
+    int dynamic = 150; // dB
+    double scaling_factor = 600.0 / dynamic; // Scale height to window's height  
 
     int height_min[800], height_max[800];
     for (int a = 0; a < 800; a++) {
@@ -208,7 +209,7 @@ void plot_spectrum(double *spectrum, int size) {
 
     for (int i = 0; i < size; i++) {
         // Normalize dB values to the height range
-        double normalized_height = (spectrum[i] + 150.0) * scaling_factor; // Shift by 150 dB for visibility
+        double normalized_height = (spectrum[i] + dynamic) * scaling_factor; // Shift by dynamic dB for visibility
         int height = (int)normalized_height;
 
         int x = (i * 800.0) / size; // Map index to x-coordinate
@@ -267,7 +268,7 @@ void plot_spectrum(double *spectrum, int size) {
     color = SDL_MapRGB(screen->format, 255, 100, 100); // Grid color
 
     // Draw grid:
-    for(int y = 600/15; y < 600; y+=600/15) {
+    for(int y = 600/(dynamic/10); y < 600; y+=600/(dynamic/10)) {   // 10 dB grid
         for(int x = 0; x < 800; x+=2) {
             ((Uint32*)screen->pixels)[y * screen->w + x] = color;
             } 
