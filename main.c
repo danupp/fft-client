@@ -5,16 +5,19 @@
 #include <arpa/inet.h>
 #include <fftw3.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 #define PORT 7373
 //#define FFT_SIZE (MAX_BUFFER_SIZE / sizeof(float) / 2)  // Number of complex samples for float
 #define FFT_SIZE 16384
 #define FFT_BYTES FFT_SIZE * sizeof(int32_t) * 2
 #define MAX_BUFFER_SIZE FFT_BYTES + 16384
+#define FONTSIZE 15
 
 SDL_Surface *screen; 
 SDL_Window *window;
-SDL_Surface *window_surface;
+SDL_Surface *window_surface, *textSurface;
+TTF_Font *font;
 
 void create_spectrum_window();
 void plot_spectrum(double *spectrum, int size);
@@ -115,6 +118,9 @@ int main() {
     // Cleanup
     SDL_FreeSurface(screen);
     SDL_DestroyWindow(window);
+    SDL_FreeSurface(textSurface); 
+    TTF_CloseFont(font);          
+    TTF_Quit();  
     SDL_Quit();
     
     close(sockfd);
@@ -179,6 +185,17 @@ void create_spectrum_window() {
 
    // Create a window surface
    window_surface = SDL_GetWindowSurface(window);
+
+    // Initialize SDL_ttf
+    if (TTF_Init() == -1) {
+        printf("TTF could not initialize! TTF_Error: %s\n", TTF_GetError());
+    }
+
+    // Load a font
+    font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeMono.ttf", FONTSIZE);
+    if (!font) {
+        printf("Font could not be loaded! TTF_Error: %s\n", TTF_GetError());
+    }
 }
 
 
@@ -228,26 +245,15 @@ void plot_spectrum(double *spectrum, int size) {
         //printf("Index: %d, dB Value: %.2f, Height: %d\n", i, spectrum[i], height);
 
         // Draw the frequency bin on the surface
-        if ((height_min[x] == 0) && (height_max[x] != 0)) { // Draw a point
-            int y = 599 - height_max[x];
-
+        if (height_min[x] == height_max[x]) 
+            height_min[x] = 0;       
+        for(int y = 599 - height_max[x]; y < 599 - height_min[x]; y++) {
             if (x >= 0 && x < 400) {  // Also ensure x is within bounds            
                 ((Uint32*)screen->pixels)[y * screen->w + 400 + x] = color; // Set pixel color
             }
             else {
                 ((Uint32*)screen->pixels)[y * screen->w + x - 400] = color; // Set pixel color
-            }
-        }
-        else {  // Draw a line         
-            for(int y = 599 - height_max[x]; y < 599 - height_min[x]; y++) {
-                if (x >= 0 && x < 400) {  // Also ensure x is within bounds            
-                    ((Uint32*)screen->pixels)[y * screen->w + 400 + x] = color; // Set pixel color
-                }
-                else {
-                    ((Uint32*)screen->pixels)[y * screen->w + x - 400] = color; // Set pixel color
-                }
-            }
-                           
+            }                           
         }
 
 //        for (int y = 600; y > 600 - height; y--) {
@@ -266,19 +272,31 @@ void plot_spectrum(double *spectrum, int size) {
     }
 
     color = SDL_MapRGB(screen->format, 255, 100, 100); // Grid color
+    SDL_Color textColor = {255, 255, 255, 255}; // White color
+    SDL_Rect dstrect;
+    char leveltext[8];
+
+    dstrect.x = 5;
 
     // Draw grid:
-    for(int y = 600/(dynamic/10); y < 600; y+=600/(dynamic/10)) {   // 10 dB grid
+    for(int lvl = 1; lvl < dynamic/10; lvl++) {   // 10 dB grid
+        int y = lvl*600/(dynamic/10);
         for(int x = 0; x < 800; x+=2) {
             ((Uint32*)screen->pixels)[y * screen->w + x] = color;
             } 
+        sprintf(leveltext,"%d dB", -10*lvl);
+        textSurface = TTF_RenderText_Solid(font, leveltext, textColor);
+        if (!textSurface) {
+            printf("Text surface could not be created! TTF_Error: %s\n", TTF_GetError());
+        }
+        dstrect.y = y-FONTSIZE-1;
+        SDL_BlitSurface(textSurface, NULL, screen, &dstrect);
     } 
     for(int x = 800/10; x < 800; x+=800/10) {
         for(int y = 0; y < 600; y+=2) {
             ((Uint32*)screen->pixels)[y * screen->w + x] = color;
         } 
     } 
-
     SDL_BlitSurface(screen, NULL, window_surface, NULL);
     SDL_UpdateWindowSurface(window);
 
