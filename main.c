@@ -6,6 +6,7 @@
 #include <fftw3.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
 
 #define PORT 7373
 //#define FFT_SIZE (MAX_BUFFER_SIZE / sizeof(float) / 2)  // Number of complex samples for float
@@ -62,6 +63,8 @@ int main() {
     printf("Listening for UDP packets on port %d...\n", PORT);
 
     while (1) {
+        uint8_t running = 1;
+
         if (buff_len < FFT_BYTES) {
             recv_len = recvfrom(sockfd, (uint8_t*)in_buffer + buff_len, sizeof(in_buffer)-buff_len, 0, (struct sockaddr *)&client_addr, &addr_len);
             if (recv_len < 0) {
@@ -109,6 +112,24 @@ int main() {
 
             
         }
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                   running = 0;  // Exit on quit event
+            }
+            else if (event.type == SDL_KEYDOWN) {
+                // Print which key was pressed
+                //printf("Key pressed: %s\n", SDL_GetKeyName(event.key.keysym.sym));
+                if (event.key.keysym.sym == SDLK_SPACE) {
+                    if (IMG_SavePNG(screen, "spectrum.png") == 0)
+                        printf("Saving spectrum as spectrum.png\n");
+                    else
+                        printf("Cannot save spectrum.png\n");
+               }
+            }
+        }
+        if (running == 0)
+            break; 
     }
 
     // Cleanup
@@ -196,6 +217,8 @@ void create_spectrum_window() {
     if (!font) {
         printf("Font could not be loaded! TTF_Error: %s\n", TTF_GetError());
     }
+
+    IMG_Init(IMG_INIT_PNG);
 }
 
 
@@ -301,7 +324,9 @@ void plot_spectrum(double *spectrum, int size) {
     SDL_UpdateWindowSurface(window);
 
     SDL_Delay(5);  // Display for 5 seconds
-
+    
+//    SDL_Event PingStop;
+//    while (SDL_PollEvent(&PingStop)) {} 
 
 }
 
